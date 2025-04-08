@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "892878066374",
+    "project_id": "mapspachuca-ae9e8",
+    "storage_bucket": "mapspachuca-ae9e8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:892878066374:android:681cbeb8c961902ae67dc7",
+        "android_client_info": {
+          "package_name": "com.example.maps_pachuca"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiouzNgvu_hh88lKOhgy33S_NvA2yfNc4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:892878066374:android:a081ef52ecbf8a78e67dc7",
+        "android_client_info": {
+          "package_name": "com.tunuevo.paquete.maps_pachuca"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiouzNgvu_hh88lKOhgy33S_NvA2yfNc4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
