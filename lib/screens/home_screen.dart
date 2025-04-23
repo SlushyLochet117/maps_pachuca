@@ -1,47 +1,99 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:maps_pachuca/screens/buscar_ruta_screen.dart';
+import 'package:maps_pachuca/screens/rutas_con_paradas_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   late GoogleMapController mapController;
-  final LatLng _pachucaCenter =
-      const LatLng(20.1235, -98.7364); // Coordenadas de Pachuca
   LatLng? _currentPosition;
+  Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+  int _selectedIndex = 0;
   bool _isMenuExpanded = false;
 
-  // Marcador para la posición central
-  final Set<Marker> _markers = {
-    Marker(
-      markerId: const MarkerId('pachuca_center'),
-      position: LatLng(20.1235, -98.7364),
-      infoWindow: const InfoWindow(title: 'Pachuca de Soto'),
-    ),
-  };
+  final LatLng _pachucaCenter = const LatLng(20.1235, -98.7364);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentLocation();
+    _loadRoutesFromFirebase();
+  }
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
-    _checkCurrentLocation();
   }
 
-  void _checkCurrentLocation() async {
-    // Simulamos obtener la ubicación actual (luego lo implementarás con GPS)
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _loadCurrentLocation() async {
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
     setState(() {
-      _currentPosition = const LatLng(20.1000, -98.7500); // Posición simulada
+      _currentPosition = LatLng(position.latitude, position.longitude);
       _markers.add(
         Marker(
           markerId: const MarkerId('current_position'),
           position: _currentPosition!,
           infoWindow: const InfoWindow(title: 'Tú estás aquí'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          icon:
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         ),
       );
+    });
+
+    mapController.animateCamera(
+      CameraUpdate.newLatLngZoom(_currentPosition!, 14),
+    );
+  }
+
+  Future<void> _loadRoutesFromFirebase() async {
+    final snapshot = await FirebaseFirestore.instance.collection('rutas').get();
+
+    Set<Marker> loadedMarkers = {};
+    Set<Polyline> loadedPolylines = {};
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final List<dynamic> paradas = data['paradas'];
+
+      List<LatLng> polylinePoints = [];
+
+      for (var parada in paradas) {
+        LatLng point = LatLng(parada['lat'], parada['lng']);
+        polylinePoints.add(point);
+
+        loadedMarkers.add(
+          Marker(
+            markerId: MarkerId('${doc.id}_${parada['nombre']}'),
+            position: point,
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueGreen),
+            infoWindow: InfoWindow(title: parada['nombre']),
+          ),
+        );
+      }
+
+      loadedPolylines.add(
+        Polyline(
+          polylineId: PolylineId(doc.id),
+          color: Colors.blue,
+          width: 5,
+          points: polylinePoints,
+        ),
+      );
+    }
+
+    setState(() {
+      _markers.addAll(loadedMarkers);
+      _polylines.addAll(loadedPolylines);
     });
   }
 
@@ -51,17 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _centerToCurrentLocation() {
-    if (_currentPosition != null) {
-      mapController.animateCamera(
-        CameraUpdate.newLatLngZoom(_currentPosition!, 16),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Obteniendo ubicación...')),
-      );
-      _checkCurrentLocation();
-    }
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Sección ${["Inicio", "Notificaciones", "Perfil"][index]}'),
+    ));
   }
 
   @override
@@ -71,24 +117,22 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           GoogleMap(
             onMapCreated: _onMapCreated,
-            initialCameraPosition: CameraPosition(
-              target: _pachucaCenter,
-              zoom: 13,
-            ),
+            initialCameraPosition:
+                CameraPosition(target: _pachucaCenter, zoom: 13),
             markers: _markers,
+            polylines: _polylines,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
           ),
 
-          // Botón de menú desplegable
+          // Botón de menú
           Positioned(
             top: 50,
             left: 20,
             child: FloatingActionButton(
-              heroTag: 'menuButton',
-              onPressed: () {
-                setState(() => _isMenuExpanded = !_isMenuExpanded);
-              },
+              heroTag: 'menuBtn',
+              onPressed: () =>
+                  setState(() => _isMenuExpanded = !_isMenuExpanded),
               backgroundColor: Colors.white,
               child: Icon(
                 _isMenuExpanded ? Icons.close : Icons.menu,
@@ -97,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Menú desplegable
+          // Menú lateral
           if (_isMenuExpanded)
             Positioned(
               top: 110,
@@ -105,16 +149,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Card(
                 elevation: 8,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
+                    borderRadius: BorderRadius.circular(15)),
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildMenuOption(Icons.directions_car, 'Transporte'),
-                      _buildMenuOption(Icons.local_taxi, 'Taxis'),
                       _buildMenuOption(Icons.directions_bus, 'Rutas'),
+                      _buildMenuOption(Icons.bus_alert, 'Paradas'),
                       _buildMenuOption(Icons.star, 'Favoritos'),
                       _buildMenuOption(Icons.settings, 'Configuración'),
                     ],
@@ -123,24 +165,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          // Botón para centrar en ubicación actual
+          // Botón centrar ubicación
           Positioned(
-            bottom: 30,
+            bottom: 110,
             right: 20,
             child: FloatingActionButton(
-              heroTag: 'locationButton',
-              onPressed: _centerToCurrentLocation,
+              heroTag: 'myLoc',
+              onPressed: _loadCurrentLocation,
               backgroundColor: Colors.white,
               child: Icon(Icons.my_location, color: Colors.blue[800]),
             ),
           ),
 
-          // Botón para centrar en Pachuca
+          // Botón centrar Pachuca
           Positioned(
-            bottom: 100,
+            bottom: 180,
             right: 20,
             child: FloatingActionButton(
-              heroTag: 'pachucaButton',
+              heroTag: 'pachucaLoc',
               onPressed: _centerToPachuca,
               backgroundColor: Colors.white,
               child: Icon(Icons.location_city, color: Colors.blue[800]),
@@ -148,16 +190,37 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Colors.blue[800],
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Inicio'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.notifications), label: 'Notificaciones'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+        ],
+      ),
     );
   }
 
-  Widget _buildMenuOption(IconData icon, String text) {
+  Widget _buildMenuOption(IconData icon, String label) {
     return InkWell(
       onTap: () {
-        // Aquí implementarás la navegación a cada sección
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sección: $text')),
-        );
+        if (label == "Rutas") {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const BuscarRutaScreen()));
+        } else if (label == "Paradas") {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const RutasConParadasScreen()));
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Sección: $label')));
+        }
         setState(() => _isMenuExpanded = false);
       },
       child: Padding(
@@ -166,12 +229,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(icon, color: Colors.blue[800]),
             const SizedBox(width: 10),
-            Text(text,
+            Text(label,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.blue[800],
-                )),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue[800])),
           ],
         ),
       ),
