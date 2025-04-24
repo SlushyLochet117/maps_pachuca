@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:maps_pachuca/screens/buscar_ruta_screen.dart';
 import 'package:maps_pachuca/screens/rutas_con_paradas_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,6 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadCurrentLocation();
     _loadRoutesFromFirebase();
+    _listenToNotifications();
+    _getTokenAndPrint();
+  }
+
+  Future<void> _getTokenAndPrint() async {
+    String? token = await FirebaseMessaging.instance.getToken();
+    print('🔑 Token FCM: $token');
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -236,6 +244,43 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.blue[800])),
           ],
         ),
+      ),
+    );
+  }
+
+  void _listenToNotifications() {
+    // Notificación en primer plano
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        final title = message.notification!.title ?? 'Sin título';
+        final body = message.notification!.body ?? 'Sin contenido';
+        _showNotificationDialog(title, body);
+      }
+    });
+
+    // Notificación al abrir la app desde segundo plano
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      if (message.notification != null) {
+        final title = message.notification!.title ?? 'Notificación';
+        final body = message.notification!.body ?? '';
+        _showNotificationDialog(title, body);
+        // Aquí puedes redirigir a otra pantalla si quieres
+      }
+    });
+  }
+
+  void _showNotificationDialog(String title, String body) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            child: const Text("Cerrar"),
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        ],
       ),
     );
   }
