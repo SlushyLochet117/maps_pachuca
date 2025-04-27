@@ -43,7 +43,11 @@ dependencies:
   geocoding: ^2.1.0
   firebase_messaging: ^15.2.5
   flutter_local_notifications: ^16.3.2
-
+  image_picker: ^1.0.7
+  firebase_storage: ^12.4.5
+  shared_preferences: ^2.2.2
+  provider: ^6.1.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

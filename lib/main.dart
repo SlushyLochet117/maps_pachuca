@@ -37,21 +37,40 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isDarkMode = false;
+
+  void toggleTheme(bool isDark) {
+    setState(() {
+      _isDarkMode = isDark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'App de Movilidad',
       theme: ThemeData(
+        brightness: Brightness.light,
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const LoginScreen(),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      home: LoginScreen(toggleTheme: toggleTheme),
       routes: {
         '/home': (context) => const HomeScreen(),
-        '/register_screen': (context) => ResetPasswordScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
       },
       debugShowCheckedModeBanner: false,
     );

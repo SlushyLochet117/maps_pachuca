@@ -5,7 +5,9 @@ import 'package:maps_pachuca/screens/register_screen.dart';
 import 'package:maps_pachuca/screens/reset_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  final void Function(bool)? toggleTheme; // <-- Agregamos el parámetro opcional
+
+  const LoginScreen({Key? key, this.toggleTheme}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

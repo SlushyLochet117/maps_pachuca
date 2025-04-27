@@ -3,8 +3,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:maps_pachuca/screens/buscar_ruta_screen.dart';
+import 'package:maps_pachuca/screens/notificaciones_screen.dart';
+import 'package:maps_pachuca/screens/perfil_screen.dart';
 import 'package:maps_pachuca/screens/rutas_con_paradas_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:maps_pachuca/screens/configuracionscreen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -113,9 +116,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Sección ${["Inicio", "Notificaciones", "Perfil"][index]}'),
-    ));
+
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NotificacionesScreen()),
+      );
+    } else if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PerfilScreen()),
+      );
+    } else {
+      // Ya está en inicio
+    }
   }
 
   @override
@@ -165,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildMenuOption(Icons.directions_bus, 'Rutas'),
                       _buildMenuOption(Icons.bus_alert, 'Paradas'),
-                      _buildMenuOption(Icons.star, 'Favoritos'),
+                      _buildMenuOption(Icons.notifications, 'Notificaciones'),
                       _buildMenuOption(Icons.settings, 'Configuración'),
                     ],
                   ),
@@ -225,6 +239,18 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(
                   builder: (context) => const RutasConParadasScreen()));
+        } else if (label == "Notificaciones") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const NotificacionesScreen()),
+          );
+        } else if (label == "Configuración") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const ConfiguracionScreen()),
+          );
         } else {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('Sección: $label')));
@@ -255,6 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final title = message.notification!.title ?? 'Sin título';
         final body = message.notification!.body ?? 'Sin contenido';
         _showNotificationDialog(title, body);
+        _saveNotificationToFirestore(title, body);
       }
     });
 
@@ -263,9 +290,18 @@ class _HomeScreenState extends State<HomeScreen> {
       if (message.notification != null) {
         final title = message.notification!.title ?? 'Notificación';
         final body = message.notification!.body ?? '';
+        _saveNotificationToFirestore(title, body);
         _showNotificationDialog(title, body);
         // Aquí puedes redirigir a otra pantalla si quieres
       }
+    });
+  }
+
+  Future<void> _saveNotificationToFirestore(String title, String body) async {
+    await FirebaseFirestore.instance.collection('notificaciones').add({
+      'titulo': title,
+      'cuerpo': body,
+      'fecha': Timestamp.now(),
     });
   }
 
