@@ -24,20 +24,62 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verificar Email')),
-      body: Center(
-        child: _isLoading
-            ? const CircularProgressIndicator()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Por favor verifica tu correo electrónico'),
-                  ElevatedButton(
-                    onPressed: _checkVerification,
-                    child: const Text('Ya verifiqué mi correo'),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          _buildGradientBackground(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.mark_email_read_rounded, size: 80, color: Colors.greenAccent),
+                    const SizedBox(height: 30),
+                    const Text(
+                      'Verifica tu correo electrónico',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Hemos enviado un enlace de verificación a tu correo. Abre tu bandeja de entrada y toca el enlace para verificar.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 32),
+                    _isLoading
+                        ? const CircularProgressIndicator(color: Colors.greenAccent)
+                        : ElevatedButton(
+                            onPressed: _checkVerification,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.greenAccent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text(
+                              'Ya verifiqué mi correo',
+                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                  ],
+                ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradientBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:maps_pachuca/screens/login_screen.dart'; // Asegúrate de importar tu LoginScreen
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({Key? key}) : super(key: key);
@@ -15,30 +16,28 @@ class _PerfilScreenState extends State<PerfilScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
 
-  void _signOut(BuildContext context) async {
+  Future<void> _signOut() async {
     await _auth.signOut();
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
-  Future<void> _deleteAccount(BuildContext context) async {
+  Future<void> _deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Eliminar cuenta?'),
-        content: const Text('Esta acción es irreversible. ¿Estás seguro?'),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.pop(context, false),
-          ),
-          TextButton(
-            child: const Text('Eliminar'),
-            onPressed: () => Navigator.pop(context, true),
-          ),
-        ],
+      builder: (_) => _customDialog(
+        title: '¿Eliminar cuenta?',
+        content: 'Esta acción no se puede deshacer. ¿Deseas continuar?',
+        confirmText: 'Eliminar',
+        confirmColor: Colors.redAccent,
       ),
     );
 
@@ -49,11 +48,15 @@ class _PerfilScreenState extends State<PerfilScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cuenta eliminada')),
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        final success = await _reauthenticateUser(context);
-        if (success) _deleteAccount(context);
+        final success = await _reauthenticateUser();
+        if (success) _deleteAccount();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.message}')),
@@ -62,11 +65,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  Future<bool> _reauthenticateUser(BuildContext context) async {
+  Future<bool> _reauthenticateUser() async {
     final user = _auth.currentUser;
     if (user == null || user.email == null) return false;
 
-    final password = await _askForPassword(context);
+    final password = await _askForPassword();
     if (password == null) return false;
 
     try {
@@ -76,38 +79,38 @@ class _PerfilScreenState extends State<PerfilScreen> {
       );
       await user.reauthenticateWithCredential(cred);
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  Future<String?> _askForPassword(BuildContext context) async {
+  Future<String?> _askForPassword() async {
     final controller = TextEditingController();
 
     return await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ingresa tu contraseña'),
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Confirmación requerida', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Contraseña'),
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Contraseña',
+            labelStyle: TextStyle(color: Colors.white70),
+          ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Aceptar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Aceptar')),
         ],
       ),
     );
   }
 
-  Future<void> _sendPasswordResetEmail(BuildContext context) async {
+  Future<void> _sendPasswordResetEmail() async {
     final user = _auth.currentUser;
     if (user?.email == null) return;
 
@@ -123,7 +126,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     }
   }
 
-  Future<void> _editProfile(BuildContext context) async {
+  Future<void> _editProfile() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
@@ -131,41 +134,73 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Editar Perfil'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.photo),
-              label: const Text('Cambiar foto'),
-              onPressed: () => _uploadProfilePicture(),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Editar perfil', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white10,
+                      labelText: 'Nombre',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _uploadProfilePicture,
+                    icon: const Icon(Icons.image, color: Colors.black),
+                    label: const Text('Cambiar foto', style: TextStyle(color: Colors.black)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.greenAccent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          await user.updateDisplayName(nameController.text.trim());
+                          await user.reload();
+                          setState(() {});
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Perfil actualizado')),
+                          );
+                        },
+                        child: const Text('Guardar', style: TextStyle(color: Colors.greenAccent)),
+                      ),
+                    ],
+                  )
+                ],
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          TextButton(
-            child: const Text('Guardar'),
-            onPressed: () async {
-              await user.updateDisplayName(nameController.text.trim());
-              await user.reload();
-              setState(() {});
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Perfil actualizado')),
-              );
-            },
-          ),
-        ],
       ),
     );
   }
@@ -174,25 +209,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
 
-    if (pickedFile == null) return;
+    final file = File(picked.path);
+    final ref = FirebaseStorage.instance.ref().child('profile_pictures/${user.uid}.jpg');
 
-    final file = File(pickedFile.path);
-    final storageRef = FirebaseStorage.instance
-        .ref()
-        .child('profile_pictures/${user.uid}.jpg');
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
 
-    await storageRef.putFile(file);
-    final downloadUrl = await storageRef.getDownloadURL();
-
-    await user.updatePhotoURL(downloadUrl);
+    await user.updatePhotoURL(url);
     await user.reload();
-
     setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Foto de perfil actualizada')),
+      const SnackBar(content: Text('Foto actualizada')),
     );
   }
 
@@ -201,98 +232,117 @@ class _PerfilScreenState extends State<PerfilScreen> {
     final user = _auth.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perfil'),
-        backgroundColor: Colors.blue[800],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
-            onPressed: () => _signOut(context),
+      body: Stack(
+        children: [
+          _buildGradientBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                // Botón de regreso
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, top: 8),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                        tooltip: 'Regresar',
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: user == null
+                        ? const Center(child: Text('No hay usuario autenticado', style: TextStyle(color: Colors.white)))
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 20),
+                              CircleAvatar(
+                                radius: 50,
+                                backgroundImage: user.photoURL != null
+                                    ? NetworkImage(user.photoURL!)
+                                    : null,
+                                backgroundColor: Colors.white10,
+                                child: user.photoURL == null
+                                    ? const Icon(Icons.person, size: 60, color: Colors.white)
+                                    : null,
+                              ),
+                              const SizedBox(height: 20),
+                              Text(user.displayName ?? 'Sin nombre',
+                                  style: const TextStyle(color: Colors.white, fontSize: 22)),
+                              Text(user.email ?? '', style: const TextStyle(color: Colors.white70)),
+                              const SizedBox(height: 30),
+                              _profileOption(Icons.edit, 'Editar perfil', _editProfile),
+                              _profileOption(Icons.lock_reset, 'Recuperar contraseña', _sendPasswordResetEmail),
+                              _profileOption(Icons.logout, 'Cerrar sesión', _signOut, color: Colors.orangeAccent),
+                              _profileOption(Icons.delete_forever, 'Eliminar cuenta', _deleteAccount, color: Colors.redAccent),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: user == null
-          ? const Center(child: Text('No hay usuario autenticado.'))
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  user.photoURL != null
-                      ? CircleAvatar(
-                          radius: 50,
-                          backgroundImage: NetworkImage(user.photoURL!),
-                        )
-                      : const CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.blue,
-                          child:
-                              Icon(Icons.person, size: 60, color: Colors.white),
-                        ),
-                  const SizedBox(height: 20),
-                  Text(
-                    user.displayName ?? 'Nombre no disponible',
-                    style: const TextStyle(fontSize: 22),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    user.email ?? 'Correo no disponible',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'UID: ${user.uid}',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 30),
-                  ListTile(
-                    leading: const Icon(Icons.verified_user),
-                    title: const Text('Correo verificado'),
-                    subtitle: Text(user.emailVerified ? 'Sí' : 'No'),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Editar perfil'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                    ),
-                    onPressed: () => _editProfile(context),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.lock_reset),
-                    label: const Text('Recuperar contraseña'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 160, 168, 212),
-                      minimumSize: const Size.fromHeight(50),
-                    ),
-                    onPressed: () => _sendPasswordResetEmail(context),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Cerrar sesión'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      minimumSize: const Size.fromHeight(50),
-                    ),
-                    onPressed: () => _signOut(context),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.delete_forever),
-                    label: const Text('Eliminar cuenta'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      minimumSize: const Size.fromHeight(50),
-                    ),
-                    onPressed: () => _deleteAccount(context),
-                  ),
-                ],
-              ),
-            ),
+    );
+  }
+
+  Widget _profileOption(IconData icon, String label, Function() onTap, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.black),
+        label: Text(label, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ?? Colors.greenAccent.shade400,
+          minimumSize: const Size.fromHeight(50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _customDialog({
+    required String title,
+    required String content,
+    required String confirmText,
+    required Color confirmColor,
+  }) {
+    return AlertDialog(
+      backgroundColor: Colors.grey[900],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
+      content: Text(content, style: const TextStyle(color: Colors.white70)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: confirmColor),
+          child: Text(confirmText),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGradientBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
     );
   }
 }

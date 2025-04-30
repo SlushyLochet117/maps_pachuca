@@ -26,7 +26,7 @@ class _AgregarResenaScreenState extends State<AgregarResenaScreen> {
         .doc(widget.paradaId)
         .collection('resenas')
         .add({
-      'autor': usuario, // 👈 Nombre alineado con el modelo Resena
+      'autor': usuario,
       'comentario': comentario,
       'estrellas': _estrellas,
       'paradaId': widget.paradaId,
@@ -39,50 +39,134 @@ class _AgregarResenaScreenState extends State<AgregarResenaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dejar Reseña'),
-        backgroundColor: Colors.green,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Calificación:', style: TextStyle(fontSize: 16)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) {
-                return IconButton(
-                  onPressed: () => setState(() => _estrellas = i + 1),
-                  icon: Icon(
-                    i < _estrellas ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                    size: 30,
+      body: Stack(
+        children: [
+          _buildGradientBackground(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Botón regresar y título
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Dejar Reseña',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              }),
-            ),
-            TextField(
-              controller: _usuarioController,
-              decoration:
-                  const InputDecoration(labelText: 'Tu nombre (opcional)'),
-            ),
-            TextField(
-              controller: _comentarioController,
-              decoration: const InputDecoration(labelText: 'Comentario'),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: guardarResena,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text('Guardar Reseña'),
+                  const SizedBox(height: 30),
+
+                  // Calificación
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Calificación:',
+                        style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (i) {
+                      return IconButton(
+                        onPressed: () => setState(() => _estrellas = i + 1),
+                        icon: Icon(
+                          i < _estrellas ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 36,
+                        ),
+                      );
+                    }),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Nombre
+                  TextField(
+                    controller: _usuarioController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Tu nombre (opcional)',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Comentario
+                  TextField(
+                    controller: _comentarioController,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Comentario',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.white10,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Botón guardar
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: guardarResena,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.greenAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Guardar Reseña',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                ],
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGradientBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
       ),
     );
